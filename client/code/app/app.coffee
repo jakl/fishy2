@@ -1,25 +1,52 @@
+do ->#adapted from creativejs.com/resources/requestanimationframe
+  lastTime = 0
+  vendors = ['ms', 'moz', 'webkit', 'o']
+
+  for vendor in vendors
+    break if window.requestAnimationFrame
+    window.requestAnimationFrame = window[vendor+'RequestAnimationFrame']
+    window.cancelAnimationFrame = window[vendor+'CancelAnimationFrame'] or window[vendor+'CancelRequestAnimationFrame']
+
+  if not window.requestAnimationFrame
+    window.requestAnimationFrame = (callback, element)->
+      currTime = new Date().getTime()
+      timeToCall = Math.max 0, 16 - (currTime - lastTime)
+      id = after timeToCall, -> callback currTime + timeToCall
+      lastTime = currTime + timeToCall
+      return id
+
+  if not window.cancelAnimationFrame
+    window.cancelAnimationFrame = (id)-> clearTimeout id
+
 every=(ms,cb)->setInterval cb,ms
+after=(ms,cb)->setTimeout cb,ms
 
 c = $('canvas')[0].getContext '2d'
-c.fillOval=(x,y,w,h)->
-  this.beginPath()
+c.fillOval=(xm,ym,r)-> #paramas are relative positions
+  cw=c.canvas.width
+  ch=c.canvas.height
+  xm *= cw
+  ym *= ch
+  w = r*2*cw
+  h = r*2*ch
+
+  x = xm-w/2
+  y = ym-h/2
+  xe = xm+w/2
+  ye = ym+h/2
 
   kappa = .5522848
   ox = (w / 2) * kappa # control point offset horizontal
   oy = (h / 2) * kappa # control point offset vertical
-  xe = x + w           # x-end
-  ye = y + h           # y-end
-  xm = x + w / 2       # x-middle
-  ym = y + h / 2       # y-middle
 
-  this.beginPath()
-  this.moveTo(x, ym)
-  this.bezierCurveTo(x, ym - oy, xm - ox, y, xm, y)
-  this.bezierCurveTo(xm + ox, y, xe, ym - oy, xe, ym)
-  this.bezierCurveTo(xe, ym + oy, xm + ox, ye, xm, ye)
-  this.bezierCurveTo(xm - ox, ye, x, ym + oy, x, ym)
-  this.closePath()
-  this.fill()
+  @beginPath()
+  @moveTo(x, ym)
+  @bezierCurveTo(x, ym - oy, xm - ox, y, xm, y)
+  @bezierCurveTo(xm + ox, y, xe, ym - oy, xe, ym)
+  @bezierCurveTo(xe, ym + oy, xm + ox, ye, xm, ye)
+  @bezierCurveTo(xm - ox, ye, x, ym + oy, x, ym)
+  @closePath()
+  @fill()
 
 resize=->
   c.canvas.width=window.innerWidth
@@ -39,12 +66,12 @@ colors=do->
 randomcolor=->colors[Math.floor Math.random()*colors.length]
 
 class fish
-  constructor:(@x=Math.random(), @y=Math.random(), @r=Math.random()*.05+.005, @color=randomcolor(), @maxspeed=.2, @maxacceleration=.03, @swimpower=Math.random()*.006, @xa=0, @ya=0, @xs=0, @ys=0)->
-  draw:(c)->
-    cw=c.canvas.width
-    ch=c.canvas.height
+  #This one line constructor needs to be on multiple lines with comments but in some cases a multiline constructor crashes node
+  constructor:(@x=Math.random(), @y=Math.random(), @r=Math.random()*.05+.005, @color=randomcolor(), @maxspeed=.2, @maxacceleration=.03, @swimpower=Math.random()*.003, @xa=0, @ya=0, @xs=0, @ys=0)->
+    #x and y are midpoints of the fish which is a perfect circle until drawn as an oval to match screen width and height ratio
+  draw:->
     c.fillStyle=@color
-    c.fillOval @x*cw, @y*ch, @r*2*cw, @r*2*ch
+    c.fillOval @x, @y, @r
   move:->
     @limitmovement()
     @xs += @xa #Accelerate
@@ -52,8 +79,10 @@ class fish
     @x += @xs #Move
     @y += @ys
     @limitmovement()
+    @applyfriction()
     @wrap()
   limitmovement:->
+    #Need to limit acceleration regardless of direction
     if Math.abs(@xa) > @maxacceleration
       @xa = @maxacceleration if @xa>0
       @xa = -@maxacceleration if @xa<0
@@ -67,18 +96,18 @@ class fish
     if Math.abs(@ys) > @maxspeed
       @ys = @maxspeed if @ys>0
       @ys = -@maxspeed if @ys<0
-    if @r > .5
-      @isdead=true
-
+  applyfriction:->
     @xa *= .80
     @ya *= .80
     @xs *= .95
     @ys *= .95
   wrap:->
-    if @x > 1 then @x = -@r
-    if @x+@r < 0 then @x = 1
-    if @y > 1 then @y = -@r
-    if @y+@r < 0 then @y = 1
+    left = -@r
+    right = 1+@r
+    @x = left if @x > right
+    @y = left if @y > right
+    @x = right if @x+@r < left
+    @y = right if @y+@r < left
   moverandomly:->
     @xa+=Math.random()*@swimpower*2-@swimpower
     @ya+=Math.random()*@swimpower*2-@swimpower
@@ -91,6 +120,7 @@ class fish
   eats:(f)->
     f.isdead = true
     @r+= ((f.r*f.r) / (@r*@r)) /100
+    @isdead=true if @r > .5 #You are too fat, and thus, dead
 
 player1 = new fish()
 player2 = new fish()
@@ -100,13 +130,14 @@ pond=[player1, player2]
 
 every 1000,-> pond.unshift new fish() unless pond.length>100 #add fish
 
-every 30,-> #draw and update fish
+draw = ->
+  requestAnimationFrame draw
   c.clearRect 0, 0, c.canvas.width, c.canvas.height
   for f in pond
-    f.draw c
+    f.draw()
     f.move()
-    f.moverandomly() unless f.isplayer? is true
-  for i in [0...pond.length-1] #trump fish eat munch fish
+    #f.moverandomly() unless f.isplayer? and f.isplayer
+  for i in [0...pond.length-1]
     for j in [i+1...pond.length]
       if pond[i].colides(pond[j])
         if pond[i].trumps(pond[j])
@@ -114,17 +145,17 @@ every 30,-> #draw and update fish
         if pond[j].trumps(pond[i])
           pond[j].eats pond[i]
   for i in [pond.length-1...0] #kill dead
-    pond[i..i]=[] if pond[i].isdead? is true
+    pond[i..i]=[] if pond[i].isdead? and pond[i].isdead
 
-  if keys.left then player1.xa -= player1.swimpower
-  if keys.right then player1.xa += player1.swimpower
   if keys.up then player1.ya -= player1.swimpower
   if keys.down then player1.ya += player1.swimpower
+  if keys.left then player1.xa -= player1.swimpower
+  if keys.right then player1.xa += player1.swimpower
 
-  if keys.a then player2.xa -= player2.swimpower
-  if keys.d then player2.xa += player2.swimpower
   if keys.w then player2.ya -= player2.swimpower
   if keys.s then player2.ya += player2.swimpower
+  if keys.a then player2.xa -= player2.swimpower
+  if keys.d then player2.xa += player2.swimpower
 
 keys = {}
 
@@ -164,3 +195,5 @@ $('canvas').mousedown (mouse)->
       f.isplayer=true
     else
       console.log 'missed...'
+
+draw()
