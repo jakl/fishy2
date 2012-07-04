@@ -1,22 +1,20 @@
 do ->#adapted from creativejs.com/resources/requestanimationframe
+  w = window
+
+  for vendor in ['ms', 'moz', 'webkit', 'o']
+    break if w.requestAnimationFrame
+    w.requestAnimationFrame = w[vendor+'RequestAnimationFrame']
+    w.cancelAnimationFrame = w[vendor+'CancelAnimationFrame'] or w[vendor+'CancelRequestAnimationFrame']
+
   lastTime = 0
-  vendors = ['ms', 'moz', 'webkit', 'o']
+  w.requestAnimationFrame or= (callback)->
+    currTime = new Date().getTime()
+    timeToCall = Math.max 0, 16 - (currTime - lastTime)
+    id = after timeToCall, -> callback currTime + timeToCall
+    lastTime = currTime + timeToCall
+    return id
 
-  for vendor in vendors
-    break if window.requestAnimationFrame
-    window.requestAnimationFrame = window[vendor+'RequestAnimationFrame']
-    window.cancelAnimationFrame = window[vendor+'CancelAnimationFrame'] or window[vendor+'CancelRequestAnimationFrame']
-
-  if not window.requestAnimationFrame
-    window.requestAnimationFrame = (callback, element)->
-      currTime = new Date().getTime()
-      timeToCall = Math.max 0, 16 - (currTime - lastTime)
-      id = after timeToCall, -> callback currTime + timeToCall
-      lastTime = currTime + timeToCall
-      return id
-
-  if not window.cancelAnimationFrame
-    window.cancelAnimationFrame = (id)-> clearTimeout id
+  w.cancelAnimationFrame or= (id)-> clearTimeout id
 
 every=(ms,cb)->setInterval cb,ms
 after=(ms,cb)->setTimeout cb,ms
@@ -54,23 +52,35 @@ resize=->
 window.onresize=resize
 resize()
 
-colors=do->
-  combinations=[]
-  for i in ['0','f']
-    for j in ['0','f']
-      for k in ['0','f']
-        combinations.push i+j+k
-  combinations.shift() #no black allowed
-  combinations
-
-randomcolor=->colors[Math.floor Math.random()*colors.length]
-
 class fish
-  #This one line constructor needs to be on multiple lines with comments but in some cases a multiline constructor crashes node
-  constructor:(@x=Math.random(), @y=Math.random(), @r=Math.random()*.05+.005, @color=randomcolor(), @maxspeed=.2, @maxacceleration=.03, @swimpower=Math.random()*.003, @xa=0, @ya=0, @xs=0, @ys=0)->
-    #x and y are midpoints of the fish which is a perfect circle until drawn as an oval to match screen width and height ratio
+  allowedcolors:do->
+    combinations=[]
+    for i in ['0','f']
+      for j in ['0','f']
+        for k in ['0','f']
+          combinations.push i+j+k
+    combinations.shift() #no black allowed
+    combinations
+  randomcolor:->@allowedcolors[Math.floor Math.random()*@allowedcolors.length]
+  constructor:(@isplayer=false)->
+    #midpoints and radius as percentages of screen width and height
+    @x=Math.random()
+    @y=Math.random()
+    @r=Math.random()*.07+.002
+
+    @color=@randomcolor()
+    @maxspeed=.01
+    @swimpower=Math.random()*.0003
+    @xa=0
+    @ya=0
+    @xs=0
+    @ys=0
+
+    @isdead=false
+
   draw:->
     c.fillStyle=@color
+    c.fillStyle = 'black' if @isdead
     c.fillOval @x, @y, @r
   move:->
     @limitmovement()
@@ -82,14 +92,7 @@ class fish
     @applyfriction()
     @wrap()
   limitmovement:->
-    #Need to limit acceleration regardless of direction
-    if Math.abs(@xa) > @maxacceleration
-      @xa = @maxacceleration if @xa>0
-      @xa = -@maxacceleration if @xa<0
-    if Math.abs(@ya) > @maxacceleration
-      @ya = @maxacceleration if @ya>0
-      @ya = -@maxacceleration if @ya<0
-
+    #Need to limit speed regardless of direction
     if Math.abs(@xs) > @maxspeed
       @xs = @maxspeed if @xs>0
       @xs = -@maxspeed if @xs<0
@@ -97,20 +100,20 @@ class fish
       @ys = @maxspeed if @ys>0
       @ys = -@maxspeed if @ys<0
   applyfriction:->
-    @xa *= .80
-    @ya *= .80
     @xs *= .95
     @ys *= .95
+    @xa *= .75
+    @ya *= .75
   wrap:->
     left = -@r
     right = 1+@r
     @x = left if @x > right
     @y = left if @y > right
-    @x = right if @x+@r < left
-    @y = right if @y+@r < left
+    @x = right if @x < left
+    @y = right if @y < left
   moverandomly:->
-    @xa+=Math.random()*@swimpower*2-@swimpower
-    @ya+=Math.random()*@swimpower*2-@swimpower
+    @xa = [-4..4][Math.floor(Math.random()*9)] *@swimpower
+    @ya = [-4..4][Math.floor(Math.random()*9)] *@swimpower
   colides:(f)->
     x = @x-f.x
     y = @y-f.y
@@ -120,80 +123,78 @@ class fish
   eats:(f)->
     f.isdead = true
     @r+= ((f.r*f.r) / (@r*@r)) /100
-    @isdead=true if @r > .5 #You are too fat, and thus, dead
+    @isdead=true if @r > .2 #You are too fat, and thus, dead
 
-player1 = new fish()
-player2 = new fish()
-player1.isplayer = true
-player2.isplayer=true
-pond=[player1, player2]
+class pond
+  reset:=>
+    @initcontrols()
+    @fishes=[new fish true]
+    @player = @fishes[0]
+    @draw()
+    every 1000, => @fishes.unshift new fish() unless @fishes.length>10
+  colide:=>
+    for f in @fishes
+      for i in @fishes
+        continue if i is f
+        if f.colides i
+          if f.trumps i
+            f.eats i
+          else
+            i.eats f
+  update:=>
+    @keyboardinput()
+    for f in @fishes
+      f.moverandomly() if not f.isplayer and Math.random()>.2
+      f.move()
+    @colide()
+    for i in [@fishes.length-1..0] #kill dead
+      @fishes[i..i]=[] if @fishes[i].isdead
+  keyboardinput:=>
+    if @keys.up then @player.ya -= @player.swimpower
+    if @keys.down then @player.ya += @player.swimpower
+    if @keys.left then @player.xa -= @player.swimpower
+    if @keys.right then @player.xa += @player.swimpower
 
-every 1000,-> pond.unshift new fish() unless pond.length>100 #add fish
+    if @keys.z then f.r *= 1.2 for f in @fishes
+    if @keys.x then f.r /= 1.2 for f in @fishes
+  draw:=>
+    requestAnimationFrame @draw
+    c.clearRect 0, 0, c.canvas.width, c.canvas.height
+    f.draw() for f in @fishes
+    @update()
+  click:(mx,my)=>
+    for f in @fishes
+      if f.colides(x:mx,y:my,r:0)
+        @player?.isplayer=false
+        @player = f
+        f.isplayer=true
+  initcontrols:->
+    @keys = {}
+    $('body').keydown (key)=>
+      switch key.keyCode
+        when 37 then @keys.left=true
+        when 39 then @keys.right=true
+        when 38 then @keys.up=true
+        when 40 then @keys.down=true
+        when 32 then @keys.space=true
+        when 90 then @keys.z=true
+        when 88 then @keys.x=true
+        else console.log key.keyCode
 
-draw = ->
-  requestAnimationFrame draw
-  c.clearRect 0, 0, c.canvas.width, c.canvas.height
-  for f in pond
-    f.draw()
-    f.move()
-    #f.moverandomly() unless f.isplayer? and f.isplayer
-  for i in [0...pond.length-1]
-    for j in [i+1...pond.length]
-      if pond[i].colides(pond[j])
-        if pond[i].trumps(pond[j])
-          pond[i].eats pond[j]
-        if pond[j].trumps(pond[i])
-          pond[j].eats pond[i]
-  for i in [pond.length-1...0] #kill dead
-    pond[i..i]=[] if pond[i].isdead? and pond[i].isdead
+    $('body').keyup (key)=>
+      switch key.keyCode
+        when 37 then @keys.left=false
+        when 39 then @keys.right=false
+        when 38 then @keys.up=false
+        when 40 then @keys.down=false
+        when 32 then @keys.space=false
+        when 90 then @keys.z=false
+        when 88 then @keys.x=false
 
-  if keys.up then player1.ya -= player1.swimpower
-  if keys.down then player1.ya += player1.swimpower
-  if keys.left then player1.xa -= player1.swimpower
-  if keys.right then player1.xa += player1.swimpower
+    $('canvas').mousedown (mouse)=>
+      mx = mouse.pageX/c.canvas.width
+      my = mouse.pageY/c.canvas.height
+      @click(mx,my)
 
-  if keys.w then player2.ya -= player2.swimpower
-  if keys.s then player2.ya += player2.swimpower
-  if keys.a then player2.xa -= player2.swimpower
-  if keys.d then player2.xa += player2.swimpower
-
-keys = {}
-
-$('body').keydown (key)->
-  switch key.keyCode
-    when 37 then keys.left=true
-    when 39 then keys.right=true
-    when 38 then keys.up=true
-    when 40 then keys.down=true
-    when 32 then keys.space=true
-    when 65 then keys.a=true
-    when 68 then keys.d=true
-    when 87 then keys.w=true
-    when 83 then keys.s=true
-    else console.log key.keyCode
-
-$('body').keyup (key)->
-  switch key.keyCode
-    when 37 then keys.left=false
-    when 39 then keys.right=false
-    when 38 then keys.up=false
-    when 40 then keys.down=false
-    when 32 then keys.space=false
-    when 65 then keys.a=false
-    when 68 then keys.d=false
-    when 87 then keys.w=false
-    when 83 then keys.s=false
-
-$('canvas').mousedown (mouse)->
-  mx = mouse.pageX/c.canvas.width
-  my = mouse.pageY/c.canvas.height
-  for f in pond
-    if f.colides(x:mx,y:my,r:0)
-      console.log 'GOT ONE!'
-      player1.isplayer=false
-      player1 = f
-      f.isplayer=true
-    else
-      console.log 'missed...'
-
-draw()
+p = new pond()
+p.reset()
