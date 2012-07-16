@@ -1,10 +1,11 @@
 {
-  "name": "fishy2",
   "description": "An awesome real time application",
   "version": "0.0.1",
   "author": "Me <me@mydomain.com>",
   "private": true,
-  "engines": { "node": ">= 0.6.0" },
+  "engines": {
+    "node": ">= 0.6.0"
+  },
   "dependencies": {
     "socketstream": "0.3.x",
     "ss-coffee": "0.1.x",
@@ -12,5 +13,10 @@
     "ss-stylus": "0.1.x",
     "ss-hogan": "0.1.x",
     "ss-console": "0.1.x"
-  }
+  },
+  "scripts": {
+    "start": "app.js"
+  },
+  "name": "fishy2",
+  "subdomain": "fishy2"
 }

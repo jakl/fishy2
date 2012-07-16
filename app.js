@@ -29,13 +29,13 @@ if (ss.env == 'production') ss.client.packAssets();
 
 // Start web server
 var server = http.Server(ss.http.middleware);
-server.listen(3000);
+server.listen(80);
 
 // Start Console Server (REPL)
 // To install client: sudo npm install -g ss-console
 // To connect: ss-console <optional_host_or_port>
-var consoleServer = require('ss-console')(ss);
-consoleServer.listen(5000);
+//var consoleServer = require('ss-console')(ss);
+//consoleServer.listen(5000);
 
 // Start SocketStream
 ss.start(server);
