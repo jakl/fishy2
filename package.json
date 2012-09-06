@@ -1,6 +1,6 @@
 {
   "description": "An awesome real time application",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": "Me <me@mydomain.com>",
   "private": true,
   "engines": {
