@@ -35,7 +35,7 @@
         service: 'google',
         id: '462948734478-nr4k3hbhhr4t96bt67bfb46hlqan0dpi.apps.googleusercontent.com',
         secret: 'xlKuQy0lR7oyPkgdH2phU_qq',
-        userId: 'login'
+        userId: 'name'
       }, {
         service: 'github',
         id: '78ce8d91eb2eff1450de',
