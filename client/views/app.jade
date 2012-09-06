@@ -1,7 +1,18 @@
-html(lang="en")
-  head
-    != SocketStream
-    meta(charset="utf-8")
-    title Fishy2
-  body(style='background-color:black ; width:100% ; heigth: 100% ; margin:0px')
-    canvas Get HTML5 canvas support
+head
+  != SocketStream
+  meta(charset="utf-8")
+  title Fishy2
+body
+  canvas Get HTML5 canvas support
+  #login.modal.hide.fade
+    .modal-header
+      button.close(type='button', data-dismiss='modal', aria-hidden='true') &times;
+      h3 Login
+    .modal-body
+      .btn-group
+        a.btn(href='auth/twitter') Twitter
+        a.btn(href='auth/facebook') Facebook
+        a.btn(href='auth/google') Google
+        a.btn(href='auth/github') Github
+    .modal-footer
+      a.btn(data-dismiss='modal') Close

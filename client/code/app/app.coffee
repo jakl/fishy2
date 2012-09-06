@@ -1,3 +1,13 @@
+ss.rpc 'demo.is_authed', (is_authed)->
+  $('#login').modal 'show' unless is_authed
+
+ss.event.on 'username', (username) -> p.username = username
+
+#ss.event.on 'newfish', (newfish) -> console.log newfish
+#ss.rpc 'demo.newfish', height:42, -> console.log 'sent'
+
+ss.heartbeatStart()
+
 do ->#adapted from creativejs.com/resources/requestanimationframe
   w = window
 
@@ -150,10 +160,10 @@ class pond
     for i in [@fishes.length-1..0] #kill dead
       @fishes[i..i]=[] if @fishes[i].isdead
   keyboardinput:=>
-    if @keys.up then @player.ya -= @player.swimpower
-    if @keys.down then @player.ya += @player.swimpower
-    if @keys.left then @player.xa -= @player.swimpower
-    if @keys.right then @player.xa += @player.swimpower
+    @player.ya -= @player.swimpower if @keys.up
+    @player.ya += @player.swimpower if @keys.down
+    @player.xa -= @player.swimpower if @keys.left
+    @player.xa += @player.swimpower if @keys.right
 
     if @keys.z then f.r *= 1.2 for f in @fishes
     if @keys.x then f.r /= 1.2 for f in @fishes
@@ -161,6 +171,9 @@ class pond
     requestAnimationFrame @draw
     c.clearRect 0, 0, c.canvas.width, c.canvas.height
     f.draw() for f in @fishes
+    c.fillStyle = 'white'
+    c.font = '20pt Arial'
+    c.fillText @username, 10, 30
     @update()
   click:(mx,my)=>
     for f in @fishes
@@ -172,29 +185,59 @@ class pond
     @keys = {}
     $('body').keydown (key)=>
       switch key.keyCode
-        when 37 then @keys.left=true
-        when 39 then @keys.right=true
-        when 38 then @keys.up=true
-        when 40 then @keys.down=true
-        when 32 then @keys.space=true
-        when 90 then @keys.z=true
-        when 88 then @keys.x=true
+        when 37
+          @keys.left = true
+          ss.rpc 'demo.keydown', 'left'
+        when 39
+          @keys.right = true
+          ss.rpc 'demo.keydown', 'right'
+        when 38
+          @keys.up = true
+          ss.rpc 'demo.keydown', 'up'
+        when 40
+          @keys.down = true
+          ss.rpc 'demo.keydown', 'down'
+        when 32
+          @keys.space = true
+          ss.rpc 'demo.keydown', 'space'
+          $('#login').modal 'toggle'
+        when 90
+          @keys.z = true
+          ss.rpc 'demo.keydown', 'z'
+        when 88
+          @keys.x = true
+          ss.rpc 'demo.keydown', 'x'
         else console.log key.keyCode
 
     $('body').keyup (key)=>
       switch key.keyCode
-        when 37 then @keys.left=false
-        when 39 then @keys.right=false
-        when 38 then @keys.up=false
-        when 40 then @keys.down=false
-        when 32 then @keys.space=false
-        when 90 then @keys.z=false
-        when 88 then @keys.x=false
+        when 37
+          @keys.left = false
+          ss.rpc 'demo.keyup', 'left'
+        when 39
+          @keys.right = false
+          ss.rpc 'demo.keyup', 'right'
+        when 38
+          @keys.up = false
+          ss.rpc 'demo.keyup', 'up'
+        when 40
+          @keys.down = false
+          ss.rpc 'demo.keyup', 'down'
+        when 32
+          @keys.space = false
+          ss.rpc 'demo.keyup', 'space'
+        when 90
+          @keys.z = false
+          ss.rpc 'demo.keyup', 'z'
+        when 88
+          @keys.x = false
+          ss.rpc 'demo.keyup', 'x'
 
     $('canvas').mousedown (mouse)=>
       mx = mouse.pageX/c.canvas.width
       my = mouse.pageY/c.canvas.height
-      @click(mx,my)
+      ss.rpc 'demo.mousedown', mx, my
+      @click mx, my
 
 p = new pond()
 p.reset()
