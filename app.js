@@ -21,10 +21,6 @@
     return res.serveClient('main');
   });
 
-  ss.session.store.use('redis');
-
-  ss.publish.transport.use('redis');
-
   ss.client.formatters.add(require('ss-coffee'));
 
   ss.client.formatters.add(require('ss-jade'));
@@ -32,8 +28,6 @@
   ss.client.formatters.add(require('ss-stylus'));
 
   ss.client.templateEngine.use(require('ss-hogan'));
-
-  ss.responders.add(require('ss-heartbeat-responder'));
 
   ss.http.middleware.append(everyauth.middleware());
 

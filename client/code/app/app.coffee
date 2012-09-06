@@ -3,11 +3,6 @@ ss.rpc 'demo.is_authed', (is_authed)->
 
 ss.event.on 'username', (username) -> p.username = username
 
-#ss.event.on 'newfish', (newfish) -> console.log newfish
-#ss.rpc 'demo.newfish', height:42, -> console.log 'sent'
-
-ss.heartbeatStart()
-
 do ->#adapted from creativejs.com/resources/requestanimationframe
   w = window
 
