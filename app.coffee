@@ -1,12 +1,7 @@
 http = require 'http'
 ss = require 'socketstream'
-everyauth = require 'everyauth'
-require('./auth.js')(everyauth)
-
-redis =
-  host: 'clingfish.redistogo.com'
-  port: 9402
-  pass: '150e688374536416d6cc82373db38dc9'
+require('./server/code/auth.js') ss
+require('./server/code/fishy2.js') ss
 
 ss.client.define 'main',
   view: 'app.jade'
@@ -16,15 +11,23 @@ ss.client.define 'main',
 
 ss.http.route '/', (req, res)-> res.serveClient 'main'
 
+redis =
+  host: 'clingfish.redistogo.com'
+  port: 9402
+  pass: '150e688374536416d6cc82373db38dc9'
+
 ss.publish.transport.use 'redis', redis
 ss.session.store.use 'redis', redis
 ss.responders.add require('ss-heartbeat-responder'), redis
+
+ss.api.heartbeat.on 'disconnect', (session)-> console.log "#{session.userId} disconnected"
+ss.api.heartbeat.on 'connect', (session)-> console.log "#{session.userId} connected"
+ss.api.heartbeat.on 'reconnect', (session)-> console.log "#{session.userId} reconnected"
 
 ss.client.formatters.add require 'ss-coffee'
 ss.client.formatters.add require 'ss-jade'
 ss.client.formatters.add require 'ss-stylus'
 ss.client.templateEngine.use require 'ss-hogan'
-ss.http.middleware.append everyauth.middleware()
 
 #Minimize and pack assets if you type: SS_ENV=production node app.js
 ss.client.packAssets() if ss.env is 'production'

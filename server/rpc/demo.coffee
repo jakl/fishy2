@@ -1,23 +1,12 @@
 exports.actions = (req, res, ss) ->
-  req.use('session')
+  req.use 'session'
+  req.use 'user.authed'
 
-  ss.heartbeat.on 'disconnect', (session)-> console.log "#{session.userId} disconnected"
-  ss.heartbeat.on 'connect', (session)-> console.log "#{session.userId} connected"
-  ss.heartbeat.on 'reconnect', (session)-> console.log "#{session.userId} reconnected"
+  is_authed: ->
+    ss.publish.user user, 'username', user
+    res true
+  get_ss: -> res ss
 
-  #Deny users without a userId, meaning they havn't authed yet
-  req.use -> (req, res, next)->
-    if req.session and req.session.userId? then next()
-    else res false
-
-  req.use -> (req)->
-    ss.publish.user req.session.userId, 'username', req.session.userId
-
-  is_authed: -> res true
-
-  #auth using twitter, save data on user session, remove on disconnect, all users get data of all other users, server has logic
-
-###
   newfish: (fish) ->
     console.log fish
     ss.publish.all('newfish', fish)     # Broadcast the message to everyone
@@ -74,4 +63,7 @@ exports.actions = (req, res, ss) ->
         s.x=false
         s.save()
   mousedown: (x,y)->
-###
+    s = req.session
+    s.mousex=x
+    s.mousey=y
+    s.save()

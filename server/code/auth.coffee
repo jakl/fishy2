@@ -1,4 +1,6 @@
-module.exports = (everyauth)->
+module.exports = (ss)->
+  everyauth = require 'everyauth'
+
   addAuth = ({service,id,secret,userId})->
     if service is 'twitter'
       everyauth[service]
@@ -49,3 +51,5 @@ module.exports = (everyauth)->
       secret:'Ft6dWlZHMJ6Qcj9iaf8q33tLMxTtcwmGQLXqQJImpPQ'
       userId:'screen_name'
   ]
+
+  ss.http.middleware.append everyauth.middleware()

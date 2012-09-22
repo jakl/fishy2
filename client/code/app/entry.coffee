@@ -9,10 +9,4 @@ ss.server.on 'disconnect', ->
 ss.server.on 'reconnect', ->
   console.log('Connection back up :-)')
 
-ss.server.on 'ready', ->
-
-  # Wait for the DOM to finish loading
-  jQuery ->
-
-    # Load app
-    require('/app')
+ss.server.on 'ready', -> jQuery -> require('/app')
